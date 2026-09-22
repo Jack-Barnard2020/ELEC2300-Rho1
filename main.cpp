@@ -216,7 +216,6 @@ string TrimString(const string& value) {
 }
 
 // Function to check if the sudoku board is a winning board
-// Function to check if the sudoku board is a winning board
 bool IsWinner(int Board[BOARD_SIZE][BOARD_SIZE]) {
     // 1. Check Rows
     for (int i = 0; i < BOARD_SIZE; ++i) {
