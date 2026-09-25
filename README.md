@@ -26,16 +26,3 @@ The application dynamically loads random Sudoku puzzles from CSV files based on 
   * **Reset Board (`r` / `reset`):** Reloads the initial puzzle state from the CSV file.
   * **Quit (`q` / `quit`):** Exits the active game session and safely returns to the main menu.
 * **Win Verification:** Fast bitmask calculation checks rows, columns, and 3x3 subgrids for completed, valid Sudoku solutions.
-
----
-
-## File Structure & Naming Conventions
-
-The application expects puzzle files formatted as standard 9x9 CSV matrices in the current working directory.
-
-```text
-├── main.cpp                  # Main C++ source code
-├── README.md                 # Project documentation
-├── easy1.csv ... easy10.csv  # Easy difficulty CSV puzzle boards
-├── medium1.csv ... medium10.csv # Medium difficulty CSV puzzle boards
-└── hard1.csv ... hard10.csv  # Hard difficulty CSV puzzle boards
