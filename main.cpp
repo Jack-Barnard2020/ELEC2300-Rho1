@@ -40,6 +40,7 @@ int DisplayMenu();
 // =================================================
 // Main Function
 // =================================================
+
 int main() {
     // Seed the random number generator
     srand(static_cast<unsigned int>(time(0)));
@@ -186,7 +187,8 @@ bool LoadBoard(int difficulty, int Board[BOARD_SIZE][BOARD_SIZE]) {
     int randomNum = rand() % 10 + 1;
     string fileName = levelName + to_string(randomNum) + ".csv";
 
-    ifstream file(fileName);
+    // Open the file from the folder "boards"
+    ifstream file("boards/" + fileName);
     if (!file.is_open()) {
         cout << "Error: Could not open file " << fileName << endl;
         return false;
@@ -304,7 +306,7 @@ bool IsWinner(int Board[BOARD_SIZE][BOARD_SIZE]) {
     return true;
 }
 
-// Function to make 11a move on the sudoku board
+// Function to make a move on the sudoku board
 int MakeMove(int Board[BOARD_SIZE][BOARD_SIZE], string position, int value) {
     position = TrimString(position);
 
