@@ -1,22 +1,31 @@
-# ELEC2300 - Command Line Interface (CLI) Sudoku Game
+# ELEC2300 - Sudoku CLI Game
 
-A lightweight C++ Command Line Interface (CLI) Sudoku game developed for **ELEC2300: Programming** (Lab 1). ELEC2300 is a mandatory Year 2 module on the Electrical and Electronic Engineering (EEE) degree program and its associated variants.
-
-The application dynamically loads random Sudoku puzzles from CSV files based on selected difficulty, supports custom user controls, and validates board completion using bitmask checking.
-
----
-
-## Module Context
-
-* **Module:** ELEC2300 - Programming
-* **Course:** BEng / MEng Electrical and Electronic Engineering (and variants)
-* **Year:** Year 2 (Mandatory)
-* **Assignment:** Lab 1 - CLI Sudoku Game
-* **Author:** Jack Barnard
+A Command Line Interface (CLI) Sudoku game implemented in C++ featuring dynamic CSV board loading, interactive gameplay, and auto-solvers.
 
 ---
 
 ## Features
+
+- **Interactive Gameplay**: Play full 9x9 Sudoku grids using standard terminal grid notation (`ROWCOL,VALUE` e.g., `A1,5`).
+- **Dynamic Board Loading**: Loads randomized 9x9 puzzle grids based on the selected difficulty level from structured CSV files in the `boards/` directory.
+- **Configurable Auto-Solver**: Integrates automated CSP solvers that can be triggered mid-game by entering `a` or `auto`. The solver algorithm is determined at compile time.
+- **Board Utilities**: Mid-game shortcuts to clear/refresh the board view (`c`) or reset to the initial puzzle state (`r`).
+
+---
+
+## Directory Structure
+```
+├── main.cpp              # Primary CLI game source code
+├── generator.cpp         # Standalone utility to generate unique Sudoku CSV files
+├── boards/               # Directory containing puzzle CSV files
+│   ├── easy1.csv ... easy20.csv
+│   ├── medium1.csv ... medium20.csv
+│   └── hard1.csv ... hard20.csv
+└── README.md             # Project documentation
+```
+---
+
+## Puzzle File Format
 
 * **Difficulty Selection:** Choose between Easy, Medium, or Hard difficulty levels from an interactive terminal main menu.
 * **Randomized Board Loading:** Loads a randomly selected puzzle board file (`1` through `10`) for the chosen difficulty level on each game startup.

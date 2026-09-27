@@ -73,3 +73,6 @@ Testing/
 
 # .dYSM
 main.dSYM/
+
+# unix executables
+*.run

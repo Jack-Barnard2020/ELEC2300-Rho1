@@ -1,15 +1,24 @@
 /* =========== ELEC2300 - Rho1 =========== 
     Author: Jack Barnard 
     Date: 2026/09/21
-    Description: A CLI sudoku game
+    Description: A CLI sudoku game with Auto-Solvers
     Change Log:
         2026/09/21 - First version
         2026/09/22 - Removed save board function. Modified load board function to load a randomly selected board based on difficulty level. Added main menu interface.
+        2026/09/27 - Added Auto-Solvers (1: Backtracking, 2: Constraint Propagation w/ MRV) and 'a' trigger.
    ======================================= */
+
+// =================================================
+// Compiler Switch for Auto-Solver Selection
+// =================================================
+// Set to 1 for Depth-First Backtracking
+// Set to 2 for Constraint Propagation with MRV
+#define SOLVER_MODE 1
 
 // =================================================
 // Includes
 // =================================================
+
 #include <iostream> // Used for input and output
 #include <vector>   // Used for storing the sudoku board
 #include <fstream>  // Used for reading and writing to the sudoku board files
@@ -36,6 +45,11 @@ string TrimString(const string& value);
 bool IsWinner(int Board[BOARD_SIZE][BOARD_SIZE]);
 int MakeMove(int Board[BOARD_SIZE][BOARD_SIZE], string position, int value);
 int DisplayMenu();
+
+// Auto-Solver Declarations
+bool IsValid(const int Board[BOARD_SIZE][BOARD_SIZE], int row, int col, int val);
+bool SolveSudokuDepthFirst(int Board[BOARD_SIZE][BOARD_SIZE]);
+bool SolveSudokuConstraintPropagation(int Board[BOARD_SIZE][BOARD_SIZE]);
 
 // =================================================
 // Main Function
@@ -67,7 +81,7 @@ int main() {
 
         // Gameplay loop
         while (true) {
-            cout << "Enter move (e.g. A1,5), 'c' to clear/refresh, 'r' to reset board, or 'q' to quit: ";
+            cout << "Enter move (e.g. A1,5), 'a' to auto-solve, 'c' to clear/refresh, 'r' to reset board, or 'q' to quit: ";
             string input;
             getline(cin, input);
 
@@ -81,6 +95,31 @@ int main() {
             if (lowerInput == "q" || lowerInput == "quit") {
                 cout << "\nReturning to main menu...\n";
                 break;
+            }
+
+            // Check for Auto-Solve
+            if (lowerInput == "a" || lowerInput == "auto") {
+                cout << "\nRunning Auto-Solver (Mode " << SOLVER_MODE << ")...\n";
+                bool solved = false;
+                
+                #if SOLVER_MODE == 1
+                    solved = SolveSudokuDepthFirst(Board);
+                #elif SOLVER_MODE == 2
+                    solved = SolveSudokuConstraintPropagation(Board);
+                #else
+                    cout << "Error: Invalid SOLVER_MODE configured.\n";
+                #endif
+
+                if (solved) {
+                    cout << "\n--- Board Auto-Solved Successfully! ---\n";
+                    PrintBoard(Board);
+                    cout << "\n===============================\n";
+                    cout << " Congratulations! Puzzle Solved!\n";
+                    cout << "===============================\n\n";
+                } else {
+                    cout << "Error: Unsolvable board state encountered.\n";
+                }
+                break; // Return to main menu after auto-solve finishes
             }
 
             // Check for Clear (redraws screen)
@@ -183,8 +222,9 @@ bool LoadBoard(int difficulty, int Board[BOARD_SIZE][BOARD_SIZE]) {
             return false;
     }
 
-    // Generate random number between 1 and 10 and construct filename
-    int randomNum = rand() % 10 + 1;
+
+    // Generate random number between 1 and 20 and construct filename
+    int randomNum = rand() % 20 + 1;
     string fileName = levelName + to_string(randomNum) + ".csv";
 
     // Open the file from the folder "boards"
@@ -333,4 +373,113 @@ int MakeMove(int Board[BOARD_SIZE][BOARD_SIZE], string position, int value) {
 
     Board[row][col] = value;
     return 0;
+}
+
+// =================================================
+// Auto-Solver Implementations
+// =================================================
+
+// Helper function to check if placing 'val' at Board[row][col] is valid
+bool IsValid(const int Board[BOARD_SIZE][BOARD_SIZE], int row, int col, int val) {
+    for (int i = 0; i < BOARD_SIZE; ++i) {
+        // Check row and column conflicts
+        if (Board[row][i] == val || Board[i][col] == val) return false;
+    }
+
+    // Check 3x3 subgrid conflict
+    int startRow = (row / 3) * 3;
+    int startCol = (col / 3) * 3;
+    for (int r = 0; r < 3; ++r) {
+        for (int c = 0; c < 3; ++c) {
+            if (Board[startRow + r][startCol + c] == val) return false;
+        }
+    }
+
+    return true;
+}
+
+// -------------------------------------------------
+// Solver 1: Depth-First Backtracking
+// -------------------------------------------------
+bool SolveSudokuDepthFirst(int Board[BOARD_SIZE][BOARD_SIZE]) {
+    int row = -1, col = -1;
+    bool isEmpty = false;
+
+    // Scan for the first empty cell sequentially
+    for (int i = 0; i < BOARD_SIZE; ++i) {
+        for (int j = 0; j < BOARD_SIZE; ++j) {
+            if (Board[i][j] == 0) {
+                row = i;
+                col = j;
+                isEmpty = true;
+                break;
+            }
+        }
+        if (isEmpty) break;
+    }
+
+    // If no empty cell is found, the puzzle is solved
+    if (!isEmpty) return true;
+
+    // Try candidates 1 through 9
+    for (int num = 1; num <= 9; ++num) {
+        if (IsValid(Board, row, col, num)) {
+            Board[row][col] = num;
+
+            if (SolveSudokuDepthFirst(Board)) return true;
+
+            Board[row][col] = 0; // Backtrack
+        }
+    }
+
+    return false;
+}
+
+// -------------------------------------------------
+// Solver 2: Constraint Propagation with MRV Heuristic
+// -------------------------------------------------
+bool SolveSudokuConstraintPropagation(int Board[BOARD_SIZE][BOARD_SIZE]) {
+    int bestRow = -1;
+    int bestCol = -1;
+    vector<int> bestCandidates;
+    int minCandidates = 10;
+
+    // Minimum Remaining Values (MRV) Search across the grid
+    for (int i = 0; i < BOARD_SIZE; ++i) {
+        for (int j = 0; j < BOARD_SIZE; ++j) {
+            if (Board[i][j] == 0) {
+                vector<int> candidates;
+                for (int num = 1; num <= 9; ++num) {
+                    if (IsValid(Board, i, j, num)) {
+                        candidates.push_back(num);
+                    }
+                }
+
+                // If a cell has 0 valid candidates, a dead-end is reached
+                if (candidates.empty()) return false;
+
+                // Pick cell with minimum remaining candidates (MRV)
+                if (candidates.size() < minCandidates) {
+                    minCandidates = candidates.size();
+                    bestRow = i;
+                    bestCol = j;
+                    bestCandidates = candidates;
+                }
+            }
+        }
+    }
+
+    // Base case: No empty cells remain
+    if (bestRow == -1) return true;
+
+    // Try candidates identified by constraint pruning
+    for (int num : bestCandidates) {
+        Board[bestRow][bestCol] = num;
+
+        if (SolveSudokuConstraintPropagation(Board)) return true;
+
+        Board[bestRow][bestCol] = 0; // Backtrack
+    }
+
+    return false;
 }
