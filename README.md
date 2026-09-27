@@ -27,35 +27,11 @@ A Command Line Interface (CLI) Sudoku game implemented in C++ featuring dynamic 
 
 ## Puzzle File Format
 
-Puzzles are stored in the `boards/` folder as comma-separated value (`.csv`) files. Empty cells are explicitly represented using `0`.
-
----
-
-## Auto-Solver Configuration
-
-The program supports switching between CSP Auto-Solver algorithms using the `#define SOLVER_MODE` preprocessor macro at the top of `main.cpp`:
-
-// Set to 1 for Depth-First Backtracking
-// Set to 2 for Constraint Propagation with MRV
-#define SOLVER_MODE 2
-
-### Supported Algorithms
-
-1. **Mode 1: Depth-First Backtracking**
-   - Naive recursive depth-first search (DFS).
-   - Sequentially scans for empty cells and tests valid candidates 1–9.
-2. **Mode 2: Constraint Propagation with MRV Heuristic**
-   - Applies the Minimum Remaining Values (MRV) heuristic.
-   - Evaluates remaining valid candidates for every unassigned cell and branches on the cell with the smallest domain size, significantly pruning the search tree.
-
----
-
-## In-Game Controls
-
-| Command | Action |
-| :--- | :--- |
-| `A1,5` | Places digit `5` at row `A`, column `1` |
-| `a` / `auto` | Runs the pre-configured Auto-Solver on the current board |
-| `c` / `clear` | Clears terminal view and redraws current board |
-| `r` / `reset` | Resets the board to its initial loaded puzzle state |
-| `q` / `quit` | Quits the current puzzle and returns to the main menu |
+* **Difficulty Selection:** Choose between Easy, Medium, or Hard difficulty levels from an interactive terminal main menu.
+* **Randomized Board Loading:** Loads a randomly selected puzzle board file (`1` through `10`) for the chosen difficulty level on each game startup.
+* **In-Game Commands:**
+  * **Make Move:** Enter cell positions and values using `ROWCOL,Value` format (e.g., `A1,5`).
+  * **Clear / Refresh Screen (`c` / `clear`):** Re-prints the current active board to clean up terminal clutter.
+  * **Reset Board (`r` / `reset`):** Reloads the initial puzzle state from the CSV file.
+  * **Quit (`q` / `quit`):** Exits the active game session and safely returns to the main menu.
+* **Win Verification:** Fast bitmask calculation checks rows, columns, and 3x3 subgrids for completed, valid Sudoku solutions.
