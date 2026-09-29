@@ -125,8 +125,8 @@ int main() {
 
     // Target clues: Easy (75), Medium (55), Hard (28)
     vector<pair<string, int>> difficulties = {
-        {"beginner", 83},
-        {"easy", 75},
+        {"beginner", 80},
+        {"easy", 70},
         {"medium", 55},
         {"hard", 42},
         {"expert", 10},
@@ -147,6 +147,6 @@ int main() {
         }
     }
 
-    cout << "All 60 boards successfully generated!\n";
+    cout << "All 120 boards successfully generated!\n";
     return 0;
 }
