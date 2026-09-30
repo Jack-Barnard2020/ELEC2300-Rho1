@@ -1,3 +1,14 @@
+/* =========== ELEC2300 - Rho1 =========== 
+    Author: Jack Barnard 
+    Date: 2026/09/21
+    Description: Standalone Sudoku puzzle generator (CSV export)
+    Change Log:
+        2026/09/21 - Initial generator script.
+        2026/09/22 - Added CSV file output targeting boards/ directory.
+        2026/09/27 - Updated difficulty thresholds and added uniqueness checks.
+        2026/09/30 - Fixed comment formatting and cleaned up file header.
+   ======================================= */
+
 #include <iostream>
 #include <vector>
 #include <fstream>
@@ -10,7 +21,6 @@ using namespace std;
 
 const int BOARD_SIZE = 9;
 
-// Helper to verify placement validity
 bool IsValid(const vector<vector<int>>& board, int row, int col, int val) {
     for (int i = 0; i < BOARD_SIZE; ++i) {
         if (board[row][i] == val || board[i][col] == val) return false;
@@ -24,7 +34,7 @@ bool IsValid(const vector<vector<int>>& board, int row, int col, int val) {
     return true;
 }
 
-// Fills an empty grid with a complete valid solution using randomized backtracking
+// Fills an empty 9x9 board with a randomized valid Sudoku solution
 bool FillBoard(vector<vector<int>>& board, mt19937& rng) {
     for (int r = 0; r < BOARD_SIZE; ++r) {
         for (int c = 0; c < BOARD_SIZE; ++c) {
@@ -46,7 +56,7 @@ bool FillBoard(vector<vector<int>>& board, mt19937& rng) {
     return true;
 }
 
-// Counts up to 2 solutions to verify puzzle uniqueness
+// DFS solution counter (exits early if >1 solution found to prove uniqueness)
 int CountSolutions(vector<vector<int>>& board, int& count) {
     for (int r = 0; r < BOARD_SIZE; ++r) {
         for (int c = 0; c < BOARD_SIZE; ++c) {
@@ -56,7 +66,7 @@ int CountSolutions(vector<vector<int>>& board, int& count) {
                         board[r][c] = val;
                         CountSolutions(board, count);
                         board[r][c] = 0;
-                        if (count >= 2) return count; // Early exit if not unique
+                        if (count >= 2) return count;
                     }
                 }
                 return count;
@@ -67,7 +77,7 @@ int CountSolutions(vector<vector<int>>& board, int& count) {
     return count;
 }
 
-// Digs holes while ensuring uniqueness
+// Removes numbers from a full board while maintaining a single unique solution
 vector<vector<int>> GenerateUniquePuzzle(int targetClues, mt19937& rng) {
     vector<vector<int>> board(BOARD_SIZE, vector<int>(BOARD_SIZE, 0));
     FillBoard(board, rng);
@@ -92,7 +102,7 @@ vector<vector<int>> GenerateUniquePuzzle(int targetClues, mt19937& rng) {
         int solutionCount = 0;
         CountSolutions(board, solutionCount);
 
-        // If removing value creates multiple solutions, revert cell
+        // Revert cell if removal creates ambiguous solution states
         if (solutionCount != 1) {
             board[r][c] = temp;
         } else {
@@ -102,7 +112,6 @@ vector<vector<int>> GenerateUniquePuzzle(int targetClues, mt19937& rng) {
     return board;
 }
 
-// Saves grid to standard CSV format using explicit 0s for empty cells
 void SaveToCSV(const string& filename, const vector<vector<int>>& board) {
     ofstream file(filename);
     if (!file.is_open()) {
@@ -123,7 +132,7 @@ void SaveToCSV(const string& filename, const vector<vector<int>>& board) {
 int main() {
     mt19937 rng(chrono::steady_clock::now().time_since_epoch().count());
 
-    // Target clues: Easy (75), Medium (55), Hard (28)
+    // Target remaining clue count per difficulty tier
     vector<pair<string, int>> difficulties = {
         {"beginner", 80},
         {"easy", 70},
@@ -133,7 +142,7 @@ int main() {
         {"impossible", 1}
     };
 
-    cout << "Generating 20 unique boards per difficulty level (CSV with 0s)...\n";
+    cout << "Generating 20 unique boards per difficulty level (CSV format)...\n";
 
     for (auto diff : difficulties) {
         string level = diff.first;
