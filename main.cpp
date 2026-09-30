@@ -1,44 +1,34 @@
 /* =========== ELEC2300 - Rho1 =========== 
     Author: Jack Barnard 
     Date: 2026/09/21
-    Description: A CLI sudoku game with Auto-Solvers
+    Description: A CLI Sudoku game with Auto-Solvers
     Change Log:
-        2026/09/21 - First version
-        2026/09/22 - Removed save board function. Modified load board function to load a randomly selected board based on difficulty level. Added main menu interface.
-        2026/09/27 - Added Auto-Solvers (1: Backtracking, 2: Constraint Propagation w/ MRV) and 'a' trigger.
+        2026/09/21 - Initial version.
+        2026/09/22 - Replaced save system with difficulty-based CSV file loader. Added menu.
+        2026/09/27 - Added DFS and Constraint Propagation solvers.
+        2026/09/30 - Fixed board reset logic to restore initial layout instead of picking a new puzzle.
    ======================================= */
 
-// =================================================
-// Compiler Switch for Auto-Solver Selection
-// =================================================
-// Set to 1 for Depth-First Backtracking
-// Set to 2 for Constraint Propagation with MRV
+// Select solver algorithm at compile time:
+// 1 = Depth-First Backtracking
+// 2 = Constraint Propagation with MRV
 #define SOLVER_MODE 1
 
-// =================================================
-// Includes
-// =================================================
+#include <iostream>
+#include <vector>
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <cctype>
+#include <cstdlib>
+#include <ctime>
+#include <limits>
 
-#include <iostream> // Used for input and output
-#include <vector>   // Used for storing the sudoku board
-#include <fstream>  // Used for reading and writing to the sudoku board files
-#include <sstream>  // Used for parsing CSV rows
-#include <string>   // Used for string handling
-#include <cctype>   // Used for toupper()
-#include <cstdlib>  // Used for rand() and srand()
-#include <ctime>    // Used for time()
-#include <limits>   // Used for numeric_limits
+using namespace std;
 
-using namespace std; // Used to avoid having to type std:: before standard library functions
+const int BOARD_SIZE = 9;
 
-// =================================================
-// Global Constants
-// =================================================
-const int BOARD_SIZE = 9; // The size of the sudoku board
-
-// =================================================
-// Function Declarations
-// =================================================
+// Core functions
 bool LoadBoard(int difficulty, int Board[BOARD_SIZE][BOARD_SIZE]);
 void PrintBoard(const int Board[BOARD_SIZE][BOARD_SIZE]);
 string TrimString(const string& value);
@@ -46,40 +36,40 @@ bool IsWinner(int Board[BOARD_SIZE][BOARD_SIZE]);
 int MakeMove(int Board[BOARD_SIZE][BOARD_SIZE], string position, int value);
 int DisplayMenu();
 
-// Auto-Solver Declarations
+// Solver functions
 bool IsValid(const int Board[BOARD_SIZE][BOARD_SIZE], int row, int col, int val);
 bool SolveSudokuDepthFirst(int Board[BOARD_SIZE][BOARD_SIZE]);
 bool SolveSudokuConstraintPropagation(int Board[BOARD_SIZE][BOARD_SIZE]);
 
-// =================================================
-// Main Function
-// =================================================
-
 int main() {
-    // Seed the random number generator
     srand(static_cast<unsigned int>(time(0)));
 
     while (true) {
         int choice = DisplayMenu();
 
-        // Check if the user selected Quit from the main menu
         if (choice == 7) {
             cout << "\nThanks for playing! Goodbye.\n";
             break;
         }
 
-        int Board[BOARD_SIZE][BOARD_SIZE] = {}; // Initialize board to zero
+        int Board[BOARD_SIZE][BOARD_SIZE] = {};
+        int InitialBoard[BOARD_SIZE][BOARD_SIZE] = {};
 
-        // Load board based on difficulty level selected
         if (!LoadBoard(choice, Board)) {
             cout << "Error: Unable to start game due to missing board file.\n";
             continue;
         }
 
-        // Print initial sudoku board
+        // Cache initial puzzle state for resets
+        for (int i = 0; i < BOARD_SIZE; ++i) {
+            for (int j = 0; j < BOARD_SIZE; ++j) {
+                InitialBoard[i][j] = Board[i][j];
+            }
+        }
+
         PrintBoard(Board);
 
-        // Gameplay loop
+        // Main game loop
         while (true) {
             cout << "Enter move (e.g. A1,5), 'a' to auto-solve, 'c' to clear/refresh, 'r' to reset board, or 'q' to quit: ";
             string input;
@@ -87,17 +77,16 @@ int main() {
 
             input = TrimString(input);
 
-            // Lowercase check helper
             string lowerInput = input;
             for (char &c : lowerInput) c = tolower(c);
 
-            // Check for Quit back to menu
+            // Quit to main menu
             if (lowerInput == "q" || lowerInput == "quit") {
                 cout << "\nReturning to main menu...\n";
                 break;
             }
 
-            // Check for Auto-Solve
+            // Auto-Solve
             if (lowerInput == "a" || lowerInput == "auto") {
                 cout << "\nRunning Auto-Solver (Mode " << SOLVER_MODE << ")...\n";
                 bool solved = false;
@@ -119,26 +108,29 @@ int main() {
                 } else {
                     cout << "Error: Unsolvable board state encountered.\n";
                 }
-                break; // Return to main menu after auto-solve finishes
+                break;
             }
 
-            // Check for Clear (redraws screen)
+            // Redraw screen
             if (lowerInput == "c" || lowerInput == "clear") {
                 cout << "\n--- Board Refreshed ---\n";
                 PrintBoard(Board);
                 continue;
             }
 
-            // Check for Reset
+            // Reset current board to starting state
             if (lowerInput == "r" || lowerInput == "reset") {
-                if (LoadBoard(choice, Board)) {
-                    cout << "\nBoard reset successfully.\n";
-                    PrintBoard(Board);
+                for (int i = 0; i < BOARD_SIZE; ++i) {
+                    for (int j = 0; j < BOARD_SIZE; ++j) {
+                        Board[i][j] = InitialBoard[i][j];
+                    }
                 }
+                cout << "\nBoard reset successfully.\n";
+                PrintBoard(Board);
                 continue;
             }
 
-            // Parse input string
+            // Move parsing (expects format: ROWCOL,Value e.g. A1,5)
             size_t commaPos = input.find(',');
             if (commaPos == string::npos) {
                 cout << "Error: Invalid format. Use format ROWCOL,Value (e.g. A1,5)\n";
@@ -156,16 +148,14 @@ int main() {
                 continue;
             }
 
-            // Apply move
             if (MakeMove(Board, position, value) == 0) {
                 PrintBoard(Board);
 
-                // Check for winning state
                 if (IsWinner(Board)) {
                     cout << "\n===============================\n";
                     cout << " Congratulations! You won!    \n";
                     cout << "===============================\n\n";
-                    break; // Return to main menu
+                    break;
                 }
             }
         }
@@ -174,11 +164,6 @@ int main() {
     return 0;
 }
 
-// =================================================
-// Auxiliary Functions
-// =================================================
-
-// Function to display the main menu and get the user's choice
 int DisplayMenu() {
     cout << "\n===============================\n";
     cout << "        Sudoku Game Menu       \n";
@@ -196,49 +181,35 @@ int DisplayMenu() {
     while (true) {
         cin >> choice;
         if (cin.fail() || choice < 1 || choice > 7) {
-            cin.clear(); // Clear the error flag
-            cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Discard invalid input
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
             cout << "Invalid choice. Please enter a number between 1 and 7: ";
         } else {
-            cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Discard extra input
-            break; // Valid input, exit the loop
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            break;
         }
     }
     return choice;
 }
 
-// Function to load the sudoku board from a CSV file
 bool LoadBoard(int difficulty, int Board[BOARD_SIZE][BOARD_SIZE]) {
     string levelName;
     switch (difficulty) {
-        case 1:
-            levelName = "beginner";
-            break;
-        case 2:
-            levelName = "easy";
-            break;
-        case 3:
-            levelName = "medium";
-            break;
-        case 4:
-            levelName = "hard";
-            break;
-        case 5:
-            levelName = "expert";
-            break;
-        case 6:
-            levelName = "impossible";
-            break;
+        case 1: levelName = "beginner"; break;
+        case 2: levelName = "easy"; break;
+        case 3: levelName = "medium"; break;
+        case 4: levelName = "hard"; break;
+        case 5: levelName = "expert"; break;
+        case 6: levelName = "impossible"; break;
         default:
             cout << "Error: Invalid difficulty level." << endl;
             return false;
     }
 
-    // Generate random number between 1 and 20 and construct filename
+    // Pick random puzzle file from boards/ directory (e.g. boards/easy14.csv)
     int randomNum = rand() % 20 + 1;
     string fileName = levelName + to_string(randomNum) + ".csv";
 
-    // Open the file from the folder "boards"
     ifstream file("boards/" + fileName);
     if (!file.is_open()) {
         cout << "Error: Could not open file " << fileName << endl;
@@ -278,7 +249,6 @@ bool LoadBoard(int difficulty, int Board[BOARD_SIZE][BOARD_SIZE]) {
     return true;
 }
 
-// Function to print the sudoku board to the console
 void PrintBoard(const int Board[BOARD_SIZE][BOARD_SIZE]) {
     cout << " | 1 2 3 | 4 5 6 | 7 8 9 |\n";
     cout << "-|-------|-------|-------|\n";
@@ -306,7 +276,6 @@ void PrintBoard(const int Board[BOARD_SIZE][BOARD_SIZE]) {
     }
 }
 
-// Function to trim whitespace from a string
 string TrimString(const string& value) {
     size_t start = value.find_first_not_of(" \t\r\n");
     if (start == string::npos) {
@@ -317,9 +286,8 @@ string TrimString(const string& value) {
     return value.substr(start, end - start + 1);
 }
 
-// Function to check if the sudoku board is a winning board
 bool IsWinner(int Board[BOARD_SIZE][BOARD_SIZE]) {
-    // 1. Check Rows
+    // Row checks
     for (int i = 0; i < BOARD_SIZE; ++i) {
         int rowMask = 0;
         for (int j = 0; j < BOARD_SIZE; ++j) {
@@ -329,7 +297,7 @@ bool IsWinner(int Board[BOARD_SIZE][BOARD_SIZE]) {
         }
     }
 
-    // 2. Check Columns
+    // Column checks
     for (int j = 0; j < BOARD_SIZE; ++j) {
         int colMask = 0;
         for (int i = 0; i < BOARD_SIZE; ++i) {
@@ -339,7 +307,7 @@ bool IsWinner(int Board[BOARD_SIZE][BOARD_SIZE]) {
         }
     }
 
-    // 3. Check 3x3 Subgrids
+    // 3x3 Box checks
     for (int box = 0; box < BOARD_SIZE; ++box) {
         int boxMask = 0;
         int startRow = (box / 3) * 3;
@@ -357,7 +325,6 @@ bool IsWinner(int Board[BOARD_SIZE][BOARD_SIZE]) {
     return true;
 }
 
-// Function to make a move on the sudoku board
 int MakeMove(int Board[BOARD_SIZE][BOARD_SIZE], string position, int value) {
     position = TrimString(position);
 
@@ -386,19 +353,13 @@ int MakeMove(int Board[BOARD_SIZE][BOARD_SIZE], string position, int value) {
     return 0;
 }
 
-// =================================================
-// Auto-Solver Implementations
-// =================================================
-
-// Helper function to check if placing 'val' at Board[row][col] is valid
+// Validity check allowing evaluation on non-empty cells
 bool IsValid(const int Board[BOARD_SIZE][BOARD_SIZE], int row, int col, int val) {
     for (int i = 0; i < BOARD_SIZE; ++i) {
-        // Skip comparing target cell against itself to allow move evaluation on non-empty cells
         if (i != col && Board[row][i] == val) return false;
         if (i != row && Board[i][col] == val) return false;
     }
 
-    // Check 3x3 subgrid conflict
     int startRow = (row / 3) * 3;
     int startCol = (col / 3) * 3;
     for (int r = 0; r < 3; ++r) {
@@ -414,14 +375,11 @@ bool IsValid(const int Board[BOARD_SIZE][BOARD_SIZE], int row, int col, int val)
     return true;
 }
 
-// -------------------------------------------------
-// Solver 1: Depth-First Backtracking
-// -------------------------------------------------
+// Depth-First Backtracking
 bool SolveSudokuDepthFirst(int Board[BOARD_SIZE][BOARD_SIZE]) {
     int row = -1, col = -1;
     bool isEmpty = false;
 
-    // Scan for the first empty cell sequentially
     for (int i = 0; i < BOARD_SIZE; ++i) {
         for (int j = 0; j < BOARD_SIZE; ++j) {
             if (Board[i][j] == 0) {
@@ -434,33 +392,28 @@ bool SolveSudokuDepthFirst(int Board[BOARD_SIZE][BOARD_SIZE]) {
         if (isEmpty) break;
     }
 
-    // If no empty cell is found, the puzzle is solved
     if (!isEmpty) return true;
 
-    // Try candidates 1 through 9
     for (int num = 1; num <= 9; ++num) {
         if (IsValid(Board, row, col, num)) {
             Board[row][col] = num;
 
             if (SolveSudokuDepthFirst(Board)) return true;
 
-            Board[row][col] = 0; // Backtrack
+            Board[row][col] = 0;
         }
     }
 
     return false;
 }
 
-// -------------------------------------------------
-// Solver 2: Constraint Propagation with MRV Heuristic
-// -------------------------------------------------
+// Constraint Propagation using MRV (Minimum Remaining Values)
 bool SolveSudokuConstraintPropagation(int Board[BOARD_SIZE][BOARD_SIZE]) {
     int bestRow = -1;
     int bestCol = -1;
     vector<int> bestCandidates;
     int minCandidates = 10;
 
-    // Minimum Remaining Values (MRV) Search across the grid
     for (int i = 0; i < BOARD_SIZE; ++i) {
         for (int j = 0; j < BOARD_SIZE; ++j) {
             if (Board[i][j] == 0) {
@@ -471,10 +424,8 @@ bool SolveSudokuConstraintPropagation(int Board[BOARD_SIZE][BOARD_SIZE]) {
                     }
                 }
 
-                // If a cell has 0 valid candidates, a dead-end is reached
                 if (candidates.empty()) return false;
 
-                // Pick cell with minimum remaining candidates (MRV)
                 if (candidates.size() < minCandidates) {
                     minCandidates = candidates.size();
                     bestRow = i;
@@ -485,16 +436,14 @@ bool SolveSudokuConstraintPropagation(int Board[BOARD_SIZE][BOARD_SIZE]) {
         }
     }
 
-    // Base case: No empty cells remain
     if (bestRow == -1) return true;
 
-    // Try candidates identified by constraint pruning
     for (int num : bestCandidates) {
         Board[bestRow][bestCol] = num;
 
         if (SolveSudokuConstraintPropagation(Board)) return true;
 
-        Board[bestRow][bestCol] = 0; // Backtrack
+        Board[bestRow][bestCol] = 0;
     }
 
     return false;
